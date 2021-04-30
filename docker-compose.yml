@@ -10,7 +10,6 @@ x-shared:
   NEO4J_dbms_memory_pagecache_size: 1G
   NEO4J_dbms.memory.heap.initial_size: 2G
   NEO4J_dbms_memory_heap_max__size: 4G
-  NEO4J_dbms_mode: CORE
   NEO4J_causal__clustering_minimum__core__cluster__size__at__runtime: 3
 
 x-shared-core:
@@ -107,6 +106,7 @@ services:
       - 7691:7691
     environment:
       <<: *common
+      NEO4J_dbms_mode: READ_REPLICA
       NEO4J_causal__clustering_discovery__advertised__address: readreplica2:5000
       NEO4J_causal__clustering_transaction__advertised__address: readreplica2:6000
       NEO4J_causal__clustering_raft__advertised__address: readreplica2:7000
