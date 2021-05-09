@@ -18,6 +18,9 @@ public class Post {
 
     public String text;
 
+    @Relationship(type = "LIKED")
+    private List<Person> likes;
+
     @Relationship(type = "TAGGED_IN")
     public List<Person> taggedPeople;
 
@@ -26,6 +29,8 @@ public class Post {
     public Post(){
 
     }
+
+
 
     public Long getId() {
         return id;
@@ -41,6 +46,14 @@ public class Post {
 
     public void setText(String text) {
         this.text = text;
+    }
+
+    public List<Person> getLikes() {
+        return likes;
+    }
+
+    public void setLikes(List<Person> likes) {
+        this.likes = likes;
     }
 
     public List<Person> getTaggedPeople() {
