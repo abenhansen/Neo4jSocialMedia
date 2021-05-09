@@ -89,7 +89,7 @@ public class PostController {
         List<Record> recordStream;
         try (Session session = driver.session()) {
             Result result = session.run("MATCH (n:Person {handleName: 'Amy'})-[:CREATED_POST]->(Post)" +
-                    "RETURN Post.text, Post.timeStamp, n.handleName ");
+                    "RETURN ID(Post), Post.text, Post.timeStamp, n.handleName ");
             recordStream = result.stream().collect(Collectors.toList());
 
         }
