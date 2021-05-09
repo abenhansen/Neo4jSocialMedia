@@ -3,8 +3,6 @@ package com.db4neo.db4neo.controllers;
 import com.db4neo.db4neo.dto.CreatePostDTO;
 import com.db4neo.db4neo.dto.FollowsDTO;
 import com.db4neo.db4neo.dto.LikedPostDTO;
-import com.db4neo.db4neo.model.Post;
-import com.db4neo.db4neo.repository.PersonRepository;
 import com.db4neo.db4neo.repository.PostRepository;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.Record;
@@ -12,12 +10,12 @@ import org.neo4j.driver.Result;
 import org.neo4j.driver.Session;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/post")
@@ -27,6 +25,7 @@ public class PostController {
     private PostRepository postRepository;
 
     private final Driver driver;
+    private ArrayList<String> taggedPeople;
 
     public PostController(PostRepository postRepository, Driver driver) {
         this.postRepository = postRepository;
@@ -34,7 +33,7 @@ public class PostController {
     }
 
     @PostMapping(consumes = "application/json", produces = "application/json")
-    public ResponseEntity<FollowsDTO> createPost(@RequestBody CreatePostDTO createPostDTO) {
+    public ResponseEntity<CreatePostDTO> createPost(@RequestBody CreatePostDTO createPostDTO) {
         try (Session session = driver.session()) {
             Result result = session.run("MATCH (n:Person {handleName: '" + createPostDTO.getAuthor() + "'}) " +
                     "CREATE (p:Post {text: '" + createPostDTO.getText() + "', timeStamp: '" + LocalDateTime.now() + "'}) " +
@@ -58,13 +57,13 @@ public class PostController {
     @PostMapping(path = "/like", consumes = "application/json", produces = "application/json")
     public ResponseEntity<LikedPostDTO> likePost(@RequestBody LikedPostDTO likedPostDTO) {
         try (Session session = driver.session()) {
-            session.run("MATCH (n:Person {handleName: '"+likedPostDTO.getLikedPerson()+"'})-[r:LIKED]->(p:Post) " +
+            session.run("MATCH (n:Person {handleName: '" + likedPostDTO.getLikedPerson() + "'})-[r:LIKED]->(p:Post) " +
                     "WHERE ID(p) = " + likedPostDTO.getPostId() + " " +
                     "DELETE r ");
             session.run("MATCH (p:Post) " +
-                                "WHERE ID(p) = " + likedPostDTO.getPostId() + " "  +
-                        "MATCH (n:Person {handleName: '" + likedPostDTO.getLikedPerson() + "'}) " +
-                        "CREATE (n)-[: LIKED]->(p) ");
+                    "WHERE ID(p) = " + likedPostDTO.getPostId() + " " +
+                    "MATCH (n:Person {handleName: '" + likedPostDTO.getLikedPerson() + "'}) " +
+                    "CREATE (n)-[: LIKED]->(p) ");
             return new ResponseEntity(likedPostDTO, HttpStatus.OK);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -75,7 +74,7 @@ public class PostController {
     @PostMapping(path = "/unlike", consumes = "application/json", produces = "application/json")
     public ResponseEntity<LikedPostDTO> unlikePost(@RequestBody LikedPostDTO likedPostDTO) {
         try (Session session = driver.session()) {
-            session.run("MATCH (n:Person {handleName: '"+likedPostDTO.getLikedPerson()+"'})-[r:LIKED]->(p:Post) " +
+            session.run("MATCH (n:Person {handleName: '" + likedPostDTO.getLikedPerson() + "'})-[r:LIKED]->(p:Post) " +
                     "WHERE ID(p) = " + likedPostDTO.getPostId() + " " +
                     "DELETE r ");
             return new ResponseEntity(likedPostDTO, HttpStatus.OK);
@@ -85,6 +84,33 @@ public class PostController {
         }
     }
 
+    @GetMapping("/{handlename}")
+    public ResponseEntity getAllPostsPerson(@PathVariable String handlename) {
+        List<Record> recordStream;
+        try (Session session = driver.session()) {
+            Result result = session.run("MATCH (n:Person {handleName: 'Amy'})-[:CREATED_POST]->(Post)" +
+                    "RETURN Post.text, Post.timeStamp, n.handleName ");
+            recordStream = result.stream().collect(Collectors.toList());
+
+        }
+        return new ResponseEntity<>(recordStream.toString(), HttpStatus.OK);
+    }
+
+    @PostMapping("/create")
+    public void createPostsSample() {
+        try (Session session = driver.session()) {
+            List<String> taggedPeople = new ArrayList<>();
+            taggedPeople.add("Pernille");
+            createPost(new CreatePostDTO("Lorem Impsum", "Bob", taggedPeople));
+            createPost(new CreatePostDTO("LasdadasdasAdadadsad", "Pernille", taggedPeople));
+            taggedPeople.add("Bob");
+            createPost(new CreatePostDTO("Dette er en Post", "Dan", taggedPeople));
+            createPost(new CreatePostDTO("Whats this youve said to me, my good friend", "Svend", taggedPeople));
+            createPost(new CreatePostDTO("Hej med dig", "Eve", taggedPeople));
+            taggedPeople.add("Eve");
+            createPost(new CreatePostDTO("Hej med dig", "Dan", taggedPeople));
+        }
+    }
 
 
 }

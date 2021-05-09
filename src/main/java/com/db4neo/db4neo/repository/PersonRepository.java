@@ -12,7 +12,4 @@ public interface PersonRepository extends Neo4jRepository<Person, String> {
 
     Person getPersonByHandleName(String handleName);
 
-    //Not Implemented this is how we make custom queries
-    @Query("MATCH (m:Movie)<-[r:ACTED_IN]-(a:Person) RETURN m,r,a LIMIT $props")
-    Collection<Person> graph(@Param("props") int limit);
 }

@@ -4,11 +4,15 @@ import com.db4neo.db4neo.dto.FollowsDTO;
 import com.db4neo.db4neo.model.Person;
 import com.db4neo.db4neo.repository.PersonRepository;
 import org.neo4j.driver.Driver;
+import org.neo4j.driver.Record;
+import org.neo4j.driver.Result;
 import org.neo4j.driver.Session;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/person")
@@ -72,5 +76,48 @@ public class PersonController {
 
         }
     }
+
+    @GetMapping("/averageFollowers")
+    public ResponseEntity followerAverage( ) {
+        List<Record> recordStream;
+       try(Session session = driver.session()) {
+           Result result = session.run("MATCH (p:Person)-[r: FOLLOWED_BY]->()\n" +
+                    "WITH COUNT(r) AS amount_followers\n" +
+                    "MATCH (n:Person)\n" +
+                    "WITH COUNT(n) as amount_persons, amount_followers\n" +
+                    "RETURN sum(toFloat(amount_followers))/amount_persons as averageFollowers");
+           recordStream = result.stream().collect(Collectors.toList());
+
+       }
+        return new ResponseEntity<>(recordStream.toString(), HttpStatus.OK);
+
+    }
+
+    @PostMapping("/similarlikes")
+    public ResponseEntity<Object> similarLikes( ) {
+        try(Session session = driver.session()) {
+            Result graphExists = session.run(("CALL gds.graph.exists('similarLikes') YIELD exists"));
+            Record record = graphExists.single();
+            if(!record.get("exists").toString().equals("FALSE"))
+                session.run("CALL gds.graph.drop('similarLikes')");
+            String similarGraph = "CALL gds.graph.create(" +
+                    "    'similarLikes'," +
+                    "    ['Post', 'Person']," +
+                    "    {" +
+                    "        Liked: {" +
+                    "            type: 'LIKED'" +
+                    "        }" +
+                    "    }" +
+                    ")";
+            session.run(similarGraph);
+            Result result = session.run("CALL gds.nodeSimilarity.stream('similarLikes') " +
+                    "YIELD node1, node2, similarity " +
+                    "RETURN gds.util.asNode(node1).handleName AS Person1, gds.util.asNode(node2).handleName AS Person2, similarity " +
+                    "ORDER BY similarity DESCENDING, Person1, Person2");
+            List<Record> recordStream = result.stream().collect(Collectors.toList());
+            return new ResponseEntity<>(recordStream.toString(), HttpStatus.OK);
+        }
+    }
+
 
 }

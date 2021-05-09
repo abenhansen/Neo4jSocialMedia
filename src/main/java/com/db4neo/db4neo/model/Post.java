@@ -30,7 +30,13 @@ public class Post {
 
     }
 
-
+    public Post(Long id, String text, List<Person> likes, List<Person> taggedPeople, LocalDateTime timeStamp) {
+        this.id = id;
+        this.text = text;
+        this.likes = likes;
+        this.taggedPeople = taggedPeople;
+        this.timeStamp = timeStamp;
+    }
 
     public Long getId() {
         return id;
